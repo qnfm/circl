@@ -74,6 +74,7 @@ go get -u github.com/cloudflare/circl
 #### XOF: eXtendable Output Functions
  - [FIPS 202](https://doi.org/10.6028/NIST.FIPS.202): SHAKE128 and SHAKE256
  - [BLAKE2X](https://www.blake2.net/blake2x.pdf): BLAKE2XB and BLAKE2XS
+ - [KangarooTwelve](https://keccak.team/kangarootwelve.html): KangarooTwelve
 
 #### Zero-knowledge Proofs
  - [Schnorr](./zk/dl): Prove knowledge of the Discrete Logarithm.
@@ -104,7 +105,7 @@ APA Style
 ```
 Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
 An Advanced Cryptographic Library. Cloudflare. Available at
-https://github.com/cloudflare/circl. v1.3.2 Accessed Jan, 2023.
+https://github.com/cloudflare/circl. v1.3.3 Accessed May, 2023.
 ```
 
 Bibtex Source
@@ -119,7 +120,7 @@ Bibtex Source
                    of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.2 Accessed Jan, 2023},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.3 Accessed May, 2023},
   month        = jun,
   year         = {2019}
 }
