@@ -20,10 +20,10 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/internal/nist"
-	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/mceliece/internal"
 	"github.com/cloudflare/circl/math/gf2e13"
+	sha3 "github.com/zeebo/blake3"
 )
 
 const (
@@ -91,13 +91,13 @@ func deriveKeyPair(entropy []byte) (*PublicKey, *PrivateKey) {
 	pivots := uint64(0xFFFFFFFF)
 
 	copy(seed[1:], entropy[:])
+	bl3 := sha3.New()
 
 	for {
 		// expanding and updating the seed
-		err := shake256(r[:], seed[0:33])
-		if err != nil {
-			panic(err)
-		}
+		bl3.Write(seed[0:33])
+		bl3.Digest().Read(r[:])
+		bl3.Reset()
 
 		copy(sk[:32], seed[1:])
 		copy(seed[1:], r[len(r)-32:])
@@ -164,10 +164,9 @@ func kemEncapsulate(c *[CiphertextSize]byte, key *[SharedKeySize]byte, pk *[Publ
 	}
 	copy(oneEC[1:1+sysN/8], e[:sysN/8])
 	copy(oneEC[1+sysN/8:1+sysN/8+syndBytes], c[:syndBytes])
-	err = shake256(key[0:32], oneEC[:])
-	if err != nil {
-		return err
-	}
+	bl3 := sha3.New()
+	bl3.Write(oneEC[:])
+	bl3.Digest().Read(key[0:32])
 
 	mask := paddingOk ^ 0xFF
 	for i := 0; i < syndBytes; i++ {
@@ -181,6 +180,7 @@ func kemEncapsulate(c *[CiphertextSize]byte, key *[SharedKeySize]byte, pk *[Publ
 		return nil
 	}
 	return fmt.Errorf("public key padding error %d", paddingOk)
+
 }
 
 // KEM Decapsulation.
@@ -205,10 +205,10 @@ func kemDecapsulate(key *[SharedKeySize]byte, c *[CiphertextSize]byte, sk *[Priv
 	}
 
 	copy(preimage[1+sysN/8:][:syndBytes], c[0:syndBytes])
-	err := shake256(key[0:32], preimage[:])
-	if err != nil {
-		return err
-	}
+	bl3 := sha3.New()
+	bl3.Write(preimage[:])
+	bl3.Digest().Read(key[0:32])
+	bl3.Reset()
 
 	// clear outputs (set to all 1's) if padding bits are not all zero
 	mask := paddingOk
@@ -220,6 +220,7 @@ func kemDecapsulate(key *[SharedKeySize]byte, c *[CiphertextSize]byte, sk *[Priv
 		return nil
 	}
 	return fmt.Errorf("public key padding error %d", paddingOk)
+
 }
 
 // Generates `e`, a random error vector of weight `t`.
@@ -564,20 +565,6 @@ func root(out *[sysN]gf, f *[sysT + 1]gf, l *[sysN]gf) {
 	for i := 0; i < sysN; i++ {
 		out[i] = eval(f, l[i])
 	}
-}
-
-// performs SHAKE-256 on `input` and store the hash in `output`
-func shake256(output []byte, input []byte) error {
-	shake := sha3.NewShake256()
-	_, err := shake.Write(input)
-	if err != nil {
-		return err
-	}
-	_, err = shake.Read(output)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // store field element `a` in the first 2 bytes of `dest`
