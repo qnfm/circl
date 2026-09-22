@@ -52,3 +52,33 @@ func TestMarshalRoundTrip(t *testing.T) {
 		t.Fatalf("recovered public key mismatch")
 	}
 }
+
+// TestDecapsulateBadPaddingNoPanic is a regression test: a correctly sized
+// ciphertext whose padding bits are non-zero must not panic through the public
+// Scheme.Decapsulate / DecapsulateTo path (a remote peer controls the
+// ciphertext). Matching the reference, decapsulation succeeds but returns a
+// shared secret that is deterministically mangled by the padding mask, so it
+// differs from the value the honest sender derived.
+func TestDecapsulateBadPaddingNoPanic(t *testing.T) {
+	sch := Scheme()
+	pk, sk := sch.DeriveKeyPair(bytes.Repeat([]byte{0x44}, sch.SeedSize()))
+	ct, ss, err := sch.EncapsulateDeterministically(pk, bytes.Repeat([]byte{0x55}, sch.EncapsulationSeedSize()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Flip a padding bit in the last syndrome byte, keeping the length valid.
+	badCT := append([]byte(nil), ct...)
+	badCT[CiphertextSize-1] |= 0x80
+
+	ss2, err := sch.Decapsulate(sk, badCT)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(ss2) != sch.SharedKeySize() {
+		t.Fatalf("unexpected shared secret size %d", len(ss2))
+	}
+	if bytes.Equal(ss, ss2) {
+		t.Fatalf("bad-padding ciphertext yielded the honest shared secret")
+	}
+}

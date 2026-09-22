@@ -31,6 +31,24 @@ type scheme struct {
 	CheckPadding    bool
 	FullSupport     bool
 	StoreFullPivots bool
+	KATHashes       []string
+}
+
+// katHashes maps each scheme to the SHA-256 digests of its official Round 4
+// KAT vectors (SHA-256(pk || sk || ct || ss), one per count). They are consumed
+// by kat_test.go.tmpl, which regenerates the deterministic NIST KAT test from
+// the AES-CTR-DRBG seed. Currently the count=0 vector is pinned per scheme.
+var katHashes = map[string][]string{
+	"mceliece348864":   {"5aa6b623698e811e729c269f293ae51f8f8fdaa35fa68e5d1cea9d2337857353"},
+	"mceliece348864f":  {"3def5860ce030e18dbb1a0acb3a272a9dfdd472c6826284f8687d2f30b1a3280"},
+	"mceliece460896":   {"08db58887b402273f96358a3eaf3cb357e092b19e52abb33dd30f038694e6899"},
+	"mceliece460896f":  {"20eacc59f02488649818291610fc476397d6a47abfe523bbc345e0e29df1f40d"},
+	"mceliece6688128":  {"6cec5636f30bf71554e3dee7ec2c957c723f8bd92bf41b892bccadeaaf1021af"},
+	"mceliece6688128f": {"3ba6541ed7fd900d7adb5ecfa7524b3848b4c7fc90cc7f61a76d7fd9081d5e75"},
+	"mceliece6960119":  {"fc0a611f070752f01a458abff804ae96ec7b35011fe964ca6ee50894ac115c9a"},
+	"mceliece6960119f": {"88d3fad79b199017c0de198ce63e9d08e0469fed5ffdafe5509b4c29b410edf3"},
+	"mceliece8192128":  {"5a135b5c38a64aff7aae642f0ea7888ebd4239913f00a030a0bf9efc6ed2ed31"},
+	"mceliece8192128f": {"644ab68f9adf604e646af81cffce9ed7c1acfb85be6b67ed2393bc28a6d6ebcc"},
 }
 
 var schemes = []scheme{
@@ -65,6 +83,7 @@ func newScheme(name string, gfBits, sysN, sysT, pkSize, skSize, ctSize, bitrevSh
 		CheckPadding:    pkNRowsMod8 != 0,
 		FullSupport:     sysN == (1 << gfBits),
 		StoreFullPivots: !useF,
+		KATHashes:       katHashes[name],
 	}
 	return s
 }
@@ -74,7 +93,9 @@ var commonInternalTemplates = []string{
 	"controlbits.go.tmpl",
 	"decrypt.go.tmpl",
 	"encrypt.go.tmpl",
+	"kat_test.go.tmpl",
 	"kem.go.tmpl",
+	"kem_test.go.tmpl",
 	"masks.go.tmpl",
 	"pk_gen.go.tmpl",
 	"root.go.tmpl",
@@ -129,6 +150,9 @@ func generateScheme(t *template.Template, s scheme) error {
 		return err
 	}
 	if err := render(t, "public_mceliece.go.tmpl", filepath.Join(publicDir, "mceliece.go"), s); err != nil {
+		return err
+	}
+	if err := render(t, "public_mceliece_test.go.tmpl", filepath.Join(publicDir, "mceliece_test.go"), s); err != nil {
 		return err
 	}
 	return nil

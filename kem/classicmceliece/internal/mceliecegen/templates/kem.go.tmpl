@@ -156,11 +156,6 @@ func Decapsulate(sk []byte, ct []byte) (ss []byte, err error) {
 	if len(ct) != CiphertextSize {
 		return nil, errors.New("classicmceliece: wrong ciphertext size")
 	}
-{{- if .CheckPadding }}
-	if checkCiphertextPadding(ct) != 0 {
-		return nil, errors.New("classicmceliece: invalid ciphertext padding")
-	}
-{{- end }}
 	e := make([]byte, SysN/8)
 	retDecrypt := byte(decrypt(e, sk[40:], ct))
 	m := uint16(retDecrypt)
@@ -177,5 +172,19 @@ func Decapsulate(sk []byte, ct []byte) (ss []byte, err error) {
 	copy(preimage[1+SysN/8:], ct)
 	ss = make([]byte, SharedKeySize)
 	cryptoHash32(ss, preimage)
+{{- if .CheckPadding }}
+	// Constant-time implicit rejection of ciphertext padding, matching the
+	// reference implementation (operations.c): the shared secret is always
+	// computed and, if the ciphertext padding bits are non-zero,
+	// deterministically mangled (set to all ones) rather than returned as-is.
+	// checkCiphertextPadding yields 0 on valid padding and -1 (0xff) otherwise,
+	// and operates only on the public ciphertext, so this stays constant time.
+	// Crucially it never returns an error for a correctly sized ciphertext, so
+	// a remote peer cannot force a panic through the DecapsulateTo wrapper.
+	paddingMask := byte(checkCiphertextPadding(ct))
+	for i := range ss {
+		ss[i] |= paddingMask
+	}
+{{- end }}
 	return ss, nil
 }
