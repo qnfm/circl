@@ -2,7 +2,11 @@
 
 package mceliece6688128f
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/cloudflare/circl/kem/classicmceliece/internal/matops"
+)
 
 func ctz(in uint64) int {
 	m := 0
@@ -169,9 +173,7 @@ func pkGen(pk []byte, sk []byte, perm *[1 << GFBits]uint32, pi *[1 << GFBits]int
 				mask >>= uint(j)
 				mask &= 1
 				mask = -mask
-				for c := 0; c < SysN/8; c++ {
-					mat[row][c] ^= mat[k][c] & mask
-				}
+				matops.AddMasked(mat[row][:], mat[k][:], mask)
 			}
 			if uint64ZeroMask(uint64((mat[row][i]>>uint(j))&1)) == ^uint64(0) {
 				return -1
@@ -181,9 +183,7 @@ func pkGen(pk []byte, sk []byte, perm *[1 << GFBits]uint32, pi *[1 << GFBits]int
 					mask := mat[k][i] >> uint(j)
 					mask &= 1
 					mask = -mask
-					for c := 0; c < SysN/8; c++ {
-						mat[k][c] ^= mat[row][c] & mask
-					}
+					matops.AddMasked(mat[k][:], mat[row][:], mask)
 				}
 			}
 		}
@@ -256,9 +256,7 @@ func pkGenFromSK(pk []byte, sk []byte) int {
 				mask >>= uint(j)
 				mask &= 1
 				mask = -mask
-				for c := 0; c < SysN/8; c++ {
-					mat[row][c] ^= mat[k][c] & mask
-				}
+				matops.AddMasked(mat[row][:], mat[k][:], mask)
 			}
 			if uint64ZeroMask(uint64((mat[row][i]>>uint(j))&1)) == ^uint64(0) {
 				return -1
@@ -268,9 +266,7 @@ func pkGenFromSK(pk []byte, sk []byte) int {
 					mask := mat[k][i] >> uint(j)
 					mask &= 1
 					mask = -mask
-					for c := 0; c < SysN/8; c++ {
-						mat[k][c] ^= mat[row][c] & mask
-					}
+					matops.AddMasked(mat[k][:], mat[row][:], mask)
 				}
 			}
 		}
